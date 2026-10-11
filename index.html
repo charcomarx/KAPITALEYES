@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Groß oder klein?</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:820px;margin:0 auto;padding:16px;background:#fafafa;color:#222}
+  h1{margin:8px 0 4px}
+  .box{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin:12px 0}
+  textarea{width:100%;box-sizing:border-box;font-size:16px;padding:8px;border:1px solid #bbb;border-radius:6px;height:140px}
+  button{font-size:16px;padding:8px 16px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;margin-top:6px;margin-right:6px}
+  button.sec{background:#6b7280}
+  button.done{background:#16a34a;font-size:18px}
+  #text{font-size:22px;line-height:2.1;background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px;display:none;user-select:none}
+  .w{display:inline-block;padding:0 3px;margin:0 1px;border-radius:5px}
+  .w.click{cursor:pointer}
+  .w.click:hover{background:#e5e7eb}
+  .w.green{background:#b7f0b1}
+  .w.red{background:#ffb3b3}
+  .w.missed{outline:2px dashed #f59e0b;background:#fff3cd}
+  #result{display:none;font-size:24px;font-weight:bold;margin:12px 0;padding:12px;background:#eef2ff;border-radius:10px}
+  #result small{display:block;font-weight:normal;font-size:14px;color:#555}
+</style>
+</head>
+<body>
+<h1>Groß oder klein? 🔤</h1>
+<p>Füge einen deutschen Text ein (richtig geschrieben!). Er wird komplett klein geschrieben. Klick auf ein Wort, um den ersten Buchstaben groß zu machen (nochmal klicken = wieder klein).</p>
+
+<div class="box" id="inputBox">
+  <textarea id="paste" placeholder="Text hier einfügen …"></textarea>
+  <button id="startBtn">Starten</button>
+</div>
+
+<div id="text"></div>
+<div id="controls" style="display:none">
+  <button class="done" id="completeBtn">Fertig ✔</button>
+  <button class="sec" id="resetBtn">Nochmal</button>
+  <button class="sec" id="newBtn">Neuer Text</button>
+</div>
+<div id="result"></div>
+
+<script>
+let words = [];
+let finished = false;
+let lastText = '';
+const $ = id => document.getElementById(id);
+
+function startGame(text) {
+  lastText = text;
+  finished = false;
+  $('result').style.display = 'none';
+  const box = $('text');
+  box.innerHTML = '';
+  words = [];
+
+  text.split(/\s+/).filter(Boolean).forEach(tok => {
+    const span = document.createElement('span');
+    span.className = 'w';
+    const m = tok.match(/\p{L}/u);
+    if (!m) {
+      span.textContent = tok;
+      box.appendChild(span);
+      box.appendChild(document.createTextNode(' '));
+      return;
+    }
+    const idx = m.index;
+    const first = tok[idx];
+    const hasCase = first.toLowerCase() !== first.toUpperCase();
+    const w = {
+      pre: tok.slice(0, idx),
+      first: first.toLowerCase(),
+      rest: tok.slice(idx + 1).toLowerCase(),
+      cap: hasCase && first !== first.toLowerCase(),
+      big: false,
+      el: span
+    };
+    words.push(w);
+    render(w);
+    if (hasCase) {
+      span.classList.add('click');
+      span.addEventListener('click', () => {
+        if (finished) return;
+        w.big = !w.big;
+        render(w);
+      });
+    }
+    box.appendChild(span);
+    box.appendChild(document.createTextNode(' '));
+  });
+
+  $('inputBox').style.display = 'none';
+  box.style.display = 'block';
+  $('controls').style.display = 'block';
+}
+
+function render(w) {
+  w.el.textContent = w.pre + (w.big ? w.first.toUpperCase() : w.first) + w.rest;
+  w.el.classList.remove('green', 'red');
+  if (w.big) w.el.classList.add(w.cap ? 'green' : 'red');
+}
+
+function complete() {
+  finished = true;
+  let green = 0, red = 0, total = 0;
+  words.forEach(w => {
+    if (w.cap) total++;
+    if (w.big && w.cap) green++;
+    if (w.big && !w.cap) red++;
+    if (w.cap && !w.big) {
+      w.big = true;
+      render(w);
+      w.el.classList.add('missed');
+    }
+    w.el.classList.remove('click');
+  });
+  $('result').innerHTML =
+    'Punkte: ' + (green - red) + ' / ' + total +
+    '<small>✅ ' + green + ' richtig groß &nbsp; ❌ ' + red + ' falsch groß &nbsp; 🟧 ' + (total - green) + ' vergessen (orange umrandet)</small>';
+  $('result').style.display = 'block';
+}
+
+$('startBtn').addEventListener('click', () => {
+  const t = $('paste').value.trim();
+  if (t) startGame(t);
+});
+$('completeBtn').addEventListener('click', () => { if (!finished) complete(); });
+$('resetBtn').addEventListener('click', () => { if (lastText) startGame(lastText); });
+$('newBtn').addEventListener('click', () => {
+  $('text').style.display = 'none';
+  $('controls').style.display = 'none';
+  $('result').style.display = 'none';
+  $('inputBox').style.display = 'block';
+  $('paste').value = '';
+});
+</script>
+</body>
+</html>
